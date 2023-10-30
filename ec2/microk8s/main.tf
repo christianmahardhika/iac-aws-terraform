@@ -2,10 +2,29 @@ provider "aws" {
   region = "ap-southeast-1" # Singapore region
 }
 
+resource "tls_private_key" "terrafrom_generated_private_key" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
+resource "aws_key_pair" "generated_key" {
+  key_name = "aws_keys_pairs"
+  # Public Key: The public will be generated using the reference of tls_private_key.terrafrom_generated_private_key
+  public_key = tls_private_key.terrafrom_generated_private_key.public_key_openssh
+
+  # Store private key :  Generate and save private key(aws_keys_pairs.pem) in current directory
+  provisioner "local-exec" {
+    command = <<-EOT
+       echo '${tls_private_key.terrafrom_generated_private_key.private_key_pem}' > aws_keys_pairs.pem
+       chmod 400 aws_keys_pairs.pem
+     EOT
+  }
+}
+
 resource "aws_instance" "microk8s" {
-  ami           = "ami-0c55b159cbfafe1f0" # Ubuntu 20.04 LTS
+  ami           = "ami-0309a295b1c3605cd" # Ubuntu 22.04 LTS
   instance_type = "t2.micro"
-  key_name      = "your_key_name"
+  key_name      = "aws_keys_pairs"
 
   vpc_security_group_ids = [
     aws_security_group.microk8s.id
@@ -14,8 +33,9 @@ resource "aws_instance" "microk8s" {
   connection {
     type        = "ssh"
     user        = "ubuntu"
-    private_key = file("~/.ssh/id_rsa")
+    private_key = file("aws_keys_pairs.pem")
     host        = self.public_ip
+    timeout     = "4m"
   }
 
   provisioner "remote-exec" {
@@ -32,8 +52,8 @@ resource "aws_instance" "microk8s" {
   }
 
   tags = {
-    Name = "microk8s-instance"
-    App  = "prodigybe"
+    Name  = "microk8s-instance"
+    Group = "prodigybe"
   }
 }
 
@@ -71,6 +91,6 @@ resource "aws_security_group" "microk8s" {
   }
 
   tags = {
-    "app" = "prodigybe"
+    "Group" = "prodigybe"
   }
 }
