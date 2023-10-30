@@ -6,6 +6,7 @@ resource "aws_instance" "microk8s" {
   ami           = "ami-0c55b159cbfafe1f0" # Ubuntu 20.04 LTS
   instance_type = "t2.micro"
   key_name      = "your_key_name"
+
   vpc_security_group_ids = [
     aws_security_group.microk8s.id
   ]
@@ -67,5 +68,9 @@ resource "aws_security_group" "microk8s" {
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    "app" = "prodigybe"
   }
 }
